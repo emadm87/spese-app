@@ -17,7 +17,7 @@ header{padding:12px;text-align:center;background:#202123;font-weight:600}
 .page{display:none;padding:12px}
 .page.active{display:block}
 
-/* SIDEBAR */
+/* SIDEBAR: versione con strip icone visibile */
 .sidebar{
  width:210px;
  background:#202123;
@@ -25,38 +25,55 @@ header{padding:12px;text-align:center;background:#202123;font-weight:600}
  position:fixed;
  left:0;top:0;
  height:100%;
- transition:.3s;
- overflow:auto;
- padding-top:90px; /* <-- sposta contenuti più in basso */
+ transition:.25s;
+ overflow:hidden;
+ padding-top:120px;
+ display:flex;
+ flex-direction:column;
+ gap:10px;
 }
-.sidebar.collapsed{width:48px}
 
-.sidebar.collapsed .text{display:none}
+/* CHIUSA: diventa solo barra icone */
+.sidebar.collapsed{
+ width:60px;
+}
+
+/* testo nascosto quando chiusa */
+.sidebar.collapsed .text,
 .sidebar.collapsed input,
 .sidebar.collapsed select,
-.sidebar.collapsed button{display:none}
-
-.icon{
- font-size:12px;
- display:flex;
- justify-content:center;
- cursor:pointer;
+.sidebar.collapsed button{
+ display:none;
 }
 
+.card{
+ background:#444654;
+ padding:10px;
+ border-radius:10px;
+ cursor:pointer;
+ transition:.2s;
+}
+
+.card:hover{transform:scale(1.02)}
+
+.icon{
+ font-size:16px;
+ text-align:center;
+}
+
+/* MAIN si adatta sempre */
 .main{
  margin-left:210px;
  padding:12px;
- transition:.3s
+ transition:.25s;
 }
-.main.collapsed{margin-left:48px}
 
-.card{background:#444654;padding:10px;border-radius:10px;margin-bottom:8px}
+.main.collapsed{
+ margin-left:60px;
+}
 
 button{padding:5px;border:none;border-radius:6px;background:#3b82f6;color:white;width:100%;margin-top:4px}
-
 input,select{width:100%;padding:4px;margin-top:4px;border-radius:5px;border:none;background:#202123;color:white}
-
-/* niente toggle button */
 
 </style>
 </head>
@@ -70,22 +87,47 @@ input,select{width:100%;padding:4px;margin-top:4px;border-radius:5px;border:none
 </div>
 
 <!-- SIDEBAR -->
-<div class="sidebar collapsed" id="menu">
-<div class="card"><div class="icon">💳</div><span class="text">Saldo</span><input id="saldo" type="number"></div>
-<div class="card"><div class="icon">🎯</div><span class="text">Obiettivo</span><input id="obiettivo" type="number"></div>
-<div class="card"><div class="icon">➕</div><span class="text">Entrata</span><input id="entrata" type="number"><button onclick="addEntrata()">+</button></div>
-<div class="card"><div class="icon">➖</div><span class="text">Spesa</span><input id="spesa" type="number"><select id="categoria"></select><button onclick="addSpesa()">-</button></div>
+<div class="sidebar collapsed" id="menu" onclick="toggleMenu()">
+
+<div class="card">
+<div class="icon">💳</div>
+<span class="text">Saldo</span>
+<input id="saldo" type="number">
+</div>
+
+<div class="card">
+<div class="icon">🎯</div>
+<span class="text">Obiettivo</span>
+<input id="obiettivo" type="number">
+</div>
+
+<div class="card">
+<div class="icon">➕</div>
+<span class="text">Entrata</span>
+<input id="entrata" type="number">
+<button onclick="event.stopPropagation();addEntrata()">+</button>
+</div>
+
+<div class="card">
+<div class="icon">➖</div>
+<span class="text">Spesa</span>
+<input id="spesa" type="number">
+<select id="categoria"></select>
+<button onclick="event.stopPropagation();addSpesa()">-</button>
+</div>
+
 </div>
 
 <!-- MAIN -->
 <div class="main collapsed" id="main">
 
 <div id="dashPage" class="page active">
-<div class="card"><div id="dash"></div><div id="forecast"></div></div>
+<div class="card" id="dash"></div>
+<div class="card" id="forecast"></div>
 </div>
 
 <div id="movPage" class="page">
-<div class="card"><div id="lista"></div></div>
+<div class="card" id="lista"></div>
 </div>
 
 <div id="grafPage" class="page">
@@ -104,16 +146,13 @@ let db=JSON.parse(localStorage.getItem('db'))||{
 
 function save(){localStorage.setItem('db',JSON.stringify(db));update()}
 
-// CLICK SIDEBAR AREA TOGGLE
 const menu=document.getElementById('menu')
 const main=document.getElementById('main')
 
-menu.addEventListener('click',(e)=>{
- // se clicco su input non toggla
- if(e.target.closest('input,button,select')) return;
+function toggleMenu(){
  menu.classList.toggle('collapsed')
  main.classList.toggle('collapsed')
-})
+}
 
 function showTab(id,el){
  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'))
@@ -122,8 +161,8 @@ function showTab(id,el){
  el.classList.add('active')
 }
 
-function addEntrata(){if(!entrata.value)return;db.entrate.push({importo:+entrata.value,data:new Date().toISOString()});save()}
-function addSpesa(){if(!spesa.value)return;db.spese.push({importo:+spesa.value,cat:categoria.value,data:new Date().toISOString()});save()}
+function addEntrata(){if(!entrata.value)return;db.entrate.push({importo:+entrata.value});save()}
+function addSpesa(){if(!spesa.value)return;db.spese.push({importo:+spesa.value,cat:categoria.value});save()}
 
 function update(){
 let totSp=db.spese.reduce((a,b)=>a+b.importo,0)
@@ -131,25 +170,18 @@ let totEn=db.entrate.reduce((a,b)=>a+b.importo,0)
 let saldo=db.saldo+totEn-totSp
 let disponibile=saldo-db.obiettivo
 
-dash.innerHTML=`💰 ${saldo.toFixed(2)}€<br>🎯 Obiettivo: ${disponibile.toFixed(2)}€`
-
-forecast.innerHTML=`Previsione mese: ${(saldo-disponibile/2).toFixed(2)}€`
-
+dash.innerHTML=`💰 Saldo: ${saldo.toFixed(2)}€`;
+forecast.innerHTML=`🎯 Obiettivo: ${disponibile.toFixed(2)}€`;
 renderLista()
-renderChart()
-renderTrend()
 }
 
 function renderLista(){
 lista.innerHTML=db.spese.map(x=>`<div>€${x.importo}</div>`).join('')
 }
 
-let chart,trend
-function renderChart(){if(chart)chart.destroy();chart=new Chart(document.getElementById('chart'),{type:'doughnut',data:{labels:['Spese'],datasets:[{data:[db.spese.reduce((a,b)=>a+b.importo,0)]}]}})}
-function renderTrend(){if(trend)trend.destroy();trend=new Chart(document.getElementById('trend'),{type:'line',data:{labels:['Andamento'],datasets:[{data:[0,10,5,20]}]}})}
-
 update()
 </script>
 </body>
 </html>
+
 
