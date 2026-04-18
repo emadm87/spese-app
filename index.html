@@ -2,31 +2,74 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Gestione Spese PRO MAX++</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 body{margin:0;font-family:-apple-system;background:#343541;color:#ececf1;overflow:hidden}
 header{padding:12px;text-align:center;background:#202123;font-weight:600}
+
 .tabs{display:flex;justify-content:space-around;background:#202123;padding:8px}
 .tab{cursor:pointer;padding:6px;border-radius:8px;font-size:12px;display:flex;flex-direction:column;align-items:center}
 .tab.active{background:#3b82f6}
+
 .page{display:none;padding:12px}
 .page.active{display:block}
 
-/* iOS-like animation */
-.sidebar{width:210px;background:#202123;padding:8px;position:fixed;left:0;top:0;height:100%;transition:transform .35s cubic-bezier(.25,.8,.25,1);overflow:hidden;padding-top:120px}
-.sidebar.collapsed{transform:translateX(-150px);background:#444654}
-.sidebar.collapsed .text,.sidebar.collapsed input,.sidebar.collapsed select,.sidebar.collapsed button{display:none}
+/* SIDEBAR sotto header + tabs */
+.sidebar{
+ width:210px;
+ background:#202123;
+ padding:8px;
+ position:fixed;
+ left:0;
+ top:88px; /* sotto header + tabs */
+ height:calc(100% - 88px);
+ transition:.3s cubic-bezier(.25,.8,.25,1);
+ overflow:hidden;
+ padding-top:30px;
+}
+
+.sidebar.collapsed{
+ width:60px;
+ background:#444654;
+}
+
+.sidebar.collapsed .text,
+.sidebar.collapsed input,
+.sidebar.collapsed select,
+.sidebar.collapsed button{
+ display:none;
+}
+
 .card{background:#444654;padding:10px;border-radius:10px;margin-bottom:10px}
 .icon{font-size:18px;text-align:center}
-.main{margin-left:210px;padding:12px;transition:margin .35s cubic-bezier(.25,.8,.25,1)}
+
+.main{
+ margin-left:210px;
+ margin-top:0;
+ padding:12px;
+ transition:.3s cubic-bezier(.25,.8,.25,1)
+}
 .main.collapsed{margin-left:60px}
+
 button{padding:6px;border:none;border-radius:6px;background:#3b82f6;color:white;width:100%;margin-top:4px}
-input,select{width:100%;padding:5px;margin-top:4px;border-radius:5px;border:none;background:#202123;color:white}
+
+/* IMPORTANT: evita zoom iPhone */
+input,select{
+ width:100%;
+ padding:6px;
+ margin-top:4px;
+ border-radius:5px;
+ border:none;
+ background:#202123;
+ color:white;
+ font-size:16px; /* blocca zoom automatico iOS */
+}
+
 .alert{padding:6px;border-radius:6px;margin-top:6px}
 .red{background:#7f1d1d}
-.green{background:#065f46}
+
 </style>
 </head>
 <body>
@@ -73,14 +116,12 @@ let db=JSON.parse(localStorage.getItem('db'))||{
 const menu=document.getElementById('menu')
 const main=document.getElementById('main')
 
-// toggle click safe
 menu.addEventListener('click',(e)=>{
  if(e.target.closest('input,button,select')) return;
  menu.classList.toggle('collapsed')
  main.classList.toggle('collapsed')
 })
 
-// swipe iPhone style
 let startX=0
 window.addEventListener('touchstart',e=>startX=e.touches[0].clientX)
 window.addEventListener('touchend',e=>{
@@ -106,11 +147,9 @@ let en=db.entrate.filter(x=>getMonth(x.data)==mese)
 let totSp=sp.reduce((a,b)=>a+b.importo,0)
 let totEn=en.reduce((a,b)=>a+b.importo,0)
 let saldo=db.saldo+totEn-totSp
-let disponibile=saldo-db.obiettivo
 
 dash.innerHTML=`💰 ${saldo.toFixed(2)}€`
 
-// alert budget
 let alertMsg=""
 db.categorie.forEach(c=>{
  let spCat=sp.filter(x=>x.cat==c.nome).reduce((a,b)=>a+b.importo,0)
@@ -134,7 +173,6 @@ sp.forEach(s=>perCat[s.cat]=(perCat[s.cat]||0)+s.importo)
 chart=new Chart(document.getElementById('chart'),{type:'doughnut',data:{labels:Object.keys(perCat),datasets:[{data:Object.values(perCat)}]}})
 }
 
-// init mesi
 function initMesi(){
 let mesi=new Set()
 db.spese.concat(db.entrate).forEach(x=>mesi.add(getMonth(x.data)))
@@ -148,6 +186,3 @@ update()
 </script>
 </body>
 </html>
-
-
-
