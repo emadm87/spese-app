@@ -3,24 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Gestione Spese PRO MAX FINAL</title>
+<title>Gestione Spese PRO MAX FIX</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 body{margin:0;font-family:-apple-system;background:#343541;color:#ececf1}
 header{padding:12px;text-align:center;background:#202123}
 .tabs{display:flex;justify-content:space-around;background:#202123;padding:8px}
-.tab{cursor:pointer;padding:6px;border-radius:8px;font-size:12px;display:flex;flex-direction:column;align-items:center}
+.tab{cursor:pointer;padding:6px;border-radius:8px;font-size:12px}
 .tab.active{background:#3b82f6}
 .page{display:none;padding:12px}
 .page.active{display:block}
 
 .sidebar{width:210px;background:#202123;position:fixed;left:0;top:95px;height:calc(100% - 95px);transition:.3s;padding:10px}
 .sidebar.collapsed{width:70px;background:#444654}
-.sidebar.collapsed input,.sidebar.collapsed select,.sidebar.collapsed button{display:none}
+.sidebar.collapsed input,.sidebar.collapsed select,.sidebar.collapsed button,.sidebar.collapsed .label{display:none}
 
 .card{background:#444654;padding:8px;border-radius:10px;margin-bottom:10px}
-.icon{font-size:16px;text-align:center}
-.label{font-size:10px;text-align:center}
+.icon{text-align:center}
+.label{text-align:center;font-size:10px}
 
 .main{margin-left:210px;padding:12px;transition:.3s}
 .main.collapsed{margin-left:70px}
@@ -31,22 +31,27 @@ button{padding:5px;border:none;border-radius:6px;background:#3b82f6;color:white;
 .move{display:flex;justify-content:space-between;padding:6px;border-bottom:1px solid #555}
 .in{color:#22c55e}
 .out{color:#ef4444}
-.del,.edit{cursor:pointer;margin-left:5px}
 </style>
 </head>
 <body>
 <header>💰 Gestione Spese</header>
 
 <div class="tabs">
-<div class="tab active" onclick="showTab('dashPage',this)">🏠 Dashboard</div>
-<div class="tab" onclick="showTab('movPage',this)">📋 Movimenti</div>
-<div class="tab" onclick="showTab('grafPage',this)">📊 Grafici</div>
+<div class="tab active" onclick="showTab('dashPage',this)">Dashboard</div>
+<div class="tab" onclick="showTab('movPage',this)">Movimenti</div>
+<div class="tab" onclick="showTab('grafPage',this)">Grafici</div>
 </div>
 
 <div class="sidebar collapsed" id="menu">
+
 <div class="card"><div class="icon">💰</div><div class="label">Saldo</div><input id="saldo" type="number"><button onclick="setSaldo()">Salva</button></div>
+
+<div class="card"><div class="icon">🎯</div><div class="label">Obiettivo</div><input id="obiettivo" type="number"><button onclick="setObiettivo()">Salva</button></div>
+
 <div class="card"><div class="icon">📈</div><div class="label">Entrata</div><input id="entrata"><input id="descEn" placeholder="tipo"><button onclick="addEntrata()">Aggiungi</button></div>
-<div class="card"><div class="icon">📉</div><div class="label">Spesa</div><input id="spesa"><input id="descSp" placeholder="tipo"><button onclick="addSpesa()">Aggiungi</button></div>
+
+<div class="card"><div class="icon">📉</div><div class="label">Spesa</div><input id="spesa"><input id="descSp" placeholder="tipo"><select id="categoria"></select><input id="newCat" placeholder="nuova categoria"><button onclick="addCategoria()">+ cat</button><button onclick="addSpesa()">Aggiungi</button></div>
+
 </div>
 
 <div class="main collapsed" id="main">
@@ -54,6 +59,7 @@ button{padding:5px;border:none;border-radius:6px;background:#3b82f6;color:white;
 <div id="dashPage" class="page active">
 <select id="meseSel" onchange="update()"></select>
 <div class="card" id="dash"></div>
+<div id="dashList"></div>
 </div>
 
 <div id="movPage" class="page">
@@ -69,19 +75,22 @@ button{padding:5px;border:none;border-radius:6px;background:#3b82f6;color:white;
 </div>
 
 <script>
-let db=JSON.parse(localStorage.getItem('db'))||{saldo:0,entrate:[],spese:[]}
+let db=JSON.parse(localStorage.getItem('db'))||{saldo:0,obiettivo:0,entrate:[],spese:[],categorie:["Cibo","Casa"]}
 
 const menu=document.getElementById('menu')
 const main=document.getElementById('main')
-menu.onclick=(e)=>{if(e.target.tagName!="INPUT"&&e.target.tagName!="BUTTON"){menu.classList.toggle('collapsed');main.classList.toggle('collapsed')}}
+menu.onclick=(e)=>{if(!e.target.closest('input,button,select')){menu.classList.toggle('collapsed');main.classList.toggle('collapsed')}}
 
 function save(){localStorage.setItem('db',JSON.stringify(db));update()}
 
 function setSaldo(){db.saldo=+saldo.value;save()}
+function setObiettivo(){db.obiettivo=+obiettivo.value;save()}
 
 function addEntrata(){db.entrate.push({importo:+entrata.value,desc:descEn.value,data:new Date().toISOString()});save()}
+function addSpesa(){db.spese.push({importo:+spesa.value,desc:descSp.value,cat:categoria.value,data:new Date().toISOString()});save()}
+function addCategoria(){if(newCat.value){db.categorie.push(newCat.value);newCat.value="";save()}}
 
-function addSpesa(){db.spese.push({importo:+spesa.value,desc:descSp.value,data:new Date().toISOString()});save()}
+function showTab(id,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById(id).classList.add('active');el.classList.add('active')}
 
 function getMonth(d){return d.slice(0,7)}
 
@@ -92,19 +101,22 @@ let sp=db.spese.filter(x=>getMonth(x.data)==mese)
 
 let saldoTot=db.saldo+en.reduce((a,b)=>a+b.importo,0)-sp.reduce((a,b)=>a+b.importo,0)
 
-dash.innerHTML=`Saldo totale: ${saldoTot.toFixed(2)}€<br>Entrate: ${en.length}<br>Spese: ${sp.length}`
+dash.innerHTML=`Saldo: ${saldoTot.toFixed(2)}€ | Obiettivo: ${db.obiettivo}€`
 
 renderLista(en,sp)
+renderDashList(en,sp)
 renderChart(en,sp)
+renderCat()
+}
+
+function renderDashList(en,sp){
+let all=[...en.map(x=>({...x,tipo:'entrata'})),...sp.map(x=>({...x,tipo:'uscita'}))]
+dashList.innerHTML=all.map((x,i)=>`<div class='move ${x.tipo=='entrata'?'in':'out'}'>${x.tipo} €${x.importo} ${x.desc||x.cat}<span onclick='edit(${i},"${x.tipo}")'>✏️</span></div>`).join('')
 }
 
 function renderLista(en,sp){
 let all=[...en.map(x=>({...x,tipo:'entrata'})),...sp.map(x=>({...x,tipo:'uscita'}))]
-lista.innerHTML=all.map((x,i)=>`<div class='move ${x.tipo=='entrata'?'in':'out'}'>${x.tipo} €${x.importo} ${x.desc}
-<span>
-<span class='edit' onclick='edit(${i},"${x.tipo}")'>✏️</span>
-<span class='del' onclick='del(${i},"${x.tipo}")'>❌</span>
-</span></div>`).join('')
+lista.innerHTML=all.map((x,i)=>`<div class='move ${x.tipo=='entrata'?'in':'out'}'>${x.tipo} €${x.importo} ${x.desc||x.cat}<span onclick='edit(${i},"${x.tipo}")'>✏️</span><span onclick='del(${i},"${x.tipo}")'>❌</span></div>`).join('')
 }
 
 function edit(i,tipo){
@@ -122,13 +134,9 @@ save()
 }
 
 let chart
-function renderChart(en,sp){
-if(chart)chart.destroy()
-chart=new Chart(document.getElementById('chart'),{
- type:'bar',
- data:{labels:['Entrate','Spese'],datasets:[{data:[en.reduce((a,b)=>a+b.importo,0),sp.reduce((a,b)=>a+b.importo,0)]}]}
-})
-}
+function renderChart(en,sp){if(chart)chart.destroy();chart=new Chart(document.getElementById('chart'),{type:'bar',data:{labels:['Entrate','Spese'],datasets:[{data:[en.reduce((a,b)=>a+b.importo,0),sp.reduce((a,b)=>a+b.importo,0)]}]}})}
+
+function renderCat(){categoria.innerHTML=db.categorie.map(c=>`<option>${c}</option>`).join('')}
 
 function initMesi(){
 let mesi=new Set()
